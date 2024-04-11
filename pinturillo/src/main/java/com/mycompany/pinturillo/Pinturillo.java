@@ -1,0 +1,139 @@
+/*
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+ */
+
+package com.mycompany.pinturillo;
+
+import java.awt.BasicStroke;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseMotionAdapter;
+import javax.swing.JButton;
+import javax.swing.JFrame;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.SwingUtilities;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import javax.imageio.ImageIO;
+import java.util.Timer;
+import net.sourceforge.tess4j.*;
+
+
+
+/**
+ *
+ * @author nicolas.herraiz
+ */
+public class Pinturillo {
+
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(new Runnable() {
+            @Override
+            public void run() {
+                DrawingWithRecognition gui = new DrawingWithRecognition();
+                gui.setVisible(true);
+                gui.startDrawing();
+            }
+        });
+    }
+}
+
+
+
+class DrawingWithRecognition extends JFrame {
+
+    private JPanel drawingPanel;
+    private BufferedImage drawingImage;
+    private Graphics2D g2d;
+    private int lastX, lastY;
+    private Timer recognitionTimer;
+
+    public DrawingWithRecognition() {
+        setTitle("Handwriting Recognition");
+        setSize(400, 400);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+
+        drawingPanel = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                if (drawingImage != null) {
+                    g.drawImage(drawingImage, 0, 0, null);
+                }
+            }
+        };
+        drawingPanel.setPreferredSize(new Dimension(400, 400));
+        drawingPanel.setBackground(Color.WHITE);
+        drawingPanel.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mousePressed(MouseEvent e) {
+                lastX = e.getX();
+                lastY = e.getY();
+            }
+        });
+        drawingPanel.addMouseMotionListener(new MouseMotionAdapter() {
+            @Override
+            public void mouseDragged(MouseEvent e) {
+                if (g2d != null) {
+                    int x = e.getX();
+                    int y = e.getY();
+                    g2d.setColor(Color.BLACK);
+                    // Aumenta el grosor de la línea
+                    g2d.setStroke(new BasicStroke(5)); // Puedes ajustar el valor para cambiar el grosor
+                    g2d.drawLine(lastX, lastY, x, y);
+                    lastX = x;
+                    lastY = y;
+                    drawingPanel.repaint();
+                }
+            }
+
+        });
+
+        add(drawingPanel, BorderLayout.CENTER);
+
+        JButton recognizeButton = new JButton("Recognize Handwriting");
+        recognizeButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                recognizeHandwriting();
+            }
+        });
+        add(recognizeButton, BorderLayout.SOUTH);
+
+        recognitionTimer = new Timer();
+    }
+
+    private void recognizeHandwriting() {
+        try {
+            if (drawingImage != null) {
+                File outputfile = new File("handwriting.png");
+                ImageIO.write(drawingImage, "png", outputfile);
+                Tesseract tesseract = new Tesseract();
+                tesseract.setLanguage("spa");
+                tesseract.setTessVariable("tessedit_char_whitelist", "0123456789");
+                String result = tesseract.doOCR(outputfile);
+                JOptionPane.showMessageDialog(this, "Recognized Text: " + result);
+            } else {
+                JOptionPane.showMessageDialog(this, "No drawing to recognize.");
+            }
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            JOptionPane.showMessageDialog(this, "Error recognizing handwriting: " + ex.getMessage());
+        }
+    }
+
+    public void startDrawing() {
+        drawingImage = new BufferedImage(400, 400, BufferedImage.TYPE_INT_ARGB);
+        g2d = drawingImage.createGraphics();
+        g2d.setColor(Color.WHITE);
+        g2d.fillRect(0, 0, 400, 400);
+    }
+}
